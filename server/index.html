@@ -2,9 +2,67 @@
 <head>
     <meta charset="utf-8">
     <title>Test</title>
-    <script src="https://bitbucket.org/atlassian-connect/all.js"></script>
+    <!-- <script src="https://bitbucket.org/atlassian-connect/all.js"></script> -->
+
+    <script src="js/Network.js"></script> <!-- For loading data -->
+
+    <script src="js/Queue.js"></script>
+    <script src="js/Stack.js"></script>
+    <script src="js/Tree.js"></script>
 </head>
 <body>
-    <h1>Hello World</h1>
-</body>
+    <h1>Merge Tree</h1>
+
+    <div>
+        <input type="search" name="repoName" id="repoName_search" placeholder="user/repo"/>
+        <input type="text" name="repoPage" id="repoPage_text" placeholder="page number" value="" />
+        <input type="button" name="clear" id="clear_button" value="Clear" />
+    </div>
+
+    <div id="content">
+    </div>
+
+    <script type="text/javascript" charset="utf-8">
+
+    var contentNode = document.getElementById('content');
+    var searchNode = document.getElementById('repoName_search');
+    var pageNode = document.getElementById('repoPage_text');
+    var clearNode = document.getElementById('clear_button');
+
+    var clear = function() {
+        while (contentNode.firstChild) {
+            contentNode.removeChild(contentNode.firstChild);
+        }
+    }
+
+
+    var formHandler = function() {
+        var loadMaster = function(masterName) {
+            var u = 'https://api.bitbucket.org/2.0/repositories/' + searchNode.value
+                + "/commits/" + masterName.name;
+            u += (pageNode.value === "" || pageNode.value === "0") ? "" : "?page=" + pageNode.value;
+            request({
+                url: u,
+                success: function(resp) { var newElement = document.createElement("p");
+                    newElement.innerHTML = JSON.stringify(resp);
+                    console.log(resp); contentNode.append(newElement);},
+                error: function(resp) { contentNode.append("An Error occured getting data for " + searchNode.value);}
+            });
+        }
+
+        request({
+            url: 'https://api.bitbucket.org/1.0/repositories/' + searchNode.value + "/main-branch",
+            success: loadMaster,
+            error: function(resp) { content.innerHTML = "An error " + resp + " occured when getting the main branch name for the repository";}
+        });
+
+
+    }
+    searchNode.addEventListener('search', formHandler);
+    pageNode.addEventListener('keypress', function(e){if (e.keyCode === 13) formHandler()});
+    clearNode.addEventListener('click', clear)
+    </script>
+
+
+    </body>
 </html>
