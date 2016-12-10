@@ -50,7 +50,6 @@ List.prototype.add = function(node, index) {
     else if (index === 0) this.prepend(node);
     else {
         var cur = this.head;
-        console.log(cur)
         for (;index; index--) cur = cur.child;
         cur.child.parent = node;
         node.child = cur.child;
@@ -82,6 +81,7 @@ List.prototype.get = function(index) {
 
 List.prototype.remove = function(index) {
     if (this.size === 0) { return null;} // nothing...
+    else if (index >= this.size || index < 0) { return undefined; }
     else if (index === 0) {
         var node = this.head;
         this.head = this.head.child;

@@ -8,7 +8,7 @@
 //
 
 
-function Node(key, data=null) {
+function TreeNode(key, data=null) {
     this.parent = null;
     this.children = [];
     this.key = key;
@@ -99,6 +99,9 @@ Tree.prototype.addPath = function(child, path) {
 
 // Remove
 //
+// Remove does not currently work correctly
+// Currently only removes one (which, the last it comes across)
+// TODO: collect all nodes to be removed and remove them
 
 Tree.prototype.remove = function(key, traversal) {
     var tree = this,
