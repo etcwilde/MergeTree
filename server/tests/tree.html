@@ -1,0 +1,92 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Tree Test</title>
+        <script src="../js/List.js"></script>
+        <script src="../js/Queue.js"></script>
+        <script src="../js/Stack.js"></script>
+        <script src="../js/Tree.js"></script>
+    </head>
+
+    <body>
+        <h1>Tree Test</h1>
+        <p>Check the javascript console in the dev tools</p>
+
+        <h2>Depth-first traversal</h2>
+        <ol id="output-df"> </ol>
+
+        <h2>Breadth-first traversal</h2>
+        <ol id="output-bf"> </ol>
+
+        <h2>Depth-first Search</h2>
+        <ol id="search-df"> </ol>
+
+        <h2>Breadth-first Search</h2>
+        <ol id="search-bf"> </ol>
+
+
+
+
+        <script type="text/javascript" charset="utf-8">
+// Adding methods
+
+var dfNode = document.getElementById("output-df");
+var bfNode = document.getElementById("output-bf");
+var tree = new Tree();
+tree.add(new TreeNode(0, "zero"));
+tree.add(new TreeNode(1, "one"), 0, tree.traverseBF);
+tree.add(new TreeNode(2, "two"), 0, tree.traverseBF);
+tree.add(new TreeNode(3, "three"), 0, tree.traverseBF);
+tree.add(new TreeNode(3, "thirteen"), 1, tree.traverseBF);
+tree.add(new TreeNode(4, "four"), 0, tree.traverseBF);
+tree.add(new TreeNode(5, "five"), 0, tree.traverseBF);
+tree.add(new TreeNode(6, "six"), 0, tree.traverseBF);
+tree.add(new TreeNode(7, "seven"), 0, tree.traverseBF);
+tree.add(new TreeNode(8, "eight"), 0, tree.traverseBF);
+tree.add(new TreeNode(9, "nine"), 0, tree.traverseBF);
+tree.add(new TreeNode(0, "ten"), 1, tree.traverseDF);
+tree.addPath(new TreeNode(1, "eleven"), [0, 1]);
+tree.addPath(new TreeNode(0, "one-hundred-thirty"), [0, 1, 3]);
+tree.addPath(new TreeNode(1, "one-hundred-thirty-one"), [0, 1, 3]);
+
+// Traversal Methods
+tree.traverseDF(function(node) { let domnode = document.createElement("li");
+    domnode.innerHTML = node.key + ((node.data !== undefined) ? " : " + node.data : "");
+    dfNode.append(domnode);
+});
+tree.traverseBF(function(node) { let domnode = document.createElement("li");
+    domnode.innerHTML = node.key + ((node.data !== undefined) ? " : " + node.data : "");
+    bfNode.append(domnode);
+});
+
+// find method
+tree.find(0, function(node) {
+    let domNode = document.getElementById("search-bf");
+    let cur = node;
+    while (cur) {
+        let el = document.createElement("li");
+        el.innerHTML = cur.key + ": " + node.data;
+        domNode.append(el);
+        cur = cur.parent;
+    }
+}, tree.traverseBF);
+
+tree.find(0, function(node) {
+    let domNode = document.getElementById("search-df");
+    let cur = node;
+    while (cur) {
+        let el = document.createElement("li");
+        el.innerHTML = cur.key + ": " + node.data;
+        domNode.append(el);
+        cur = cur.parent;
+    }
+}, tree.traversedF);
+
+// TODO: Remove (both standard and path)
+// NOTE: Since find finds all instances of a key, remove should return a list of removed nodes
+
+console.log(tree);
+
+        </script>
+    </body>
+</html>
