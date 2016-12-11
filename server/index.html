@@ -35,6 +35,53 @@
         }
     }
 
+    // Database of all commits -- probably a better way to store this info
+    var lookupTable = {};
+    var mergeTree = new Tree();
+
+    function populateLookupTable(commits) {
+        for (var node of commits) {
+            lookupTable[node.hash] = node;
+        }
+    }
+
+    function constructParentTable(commits) {
+        var tableElement = document.createElement("table");
+        tableElement.style.border = "thick solid #eeeeee";
+        contentNode.append(tableElement);
+        let row = document.createElement("tr");
+        row.append(function() { let item = document.createElement("th");
+            item.innerHTML = "cid";
+            return item;
+        }());
+        row.append(function() { let item = document.createElement("th");
+            item.innerHTML = "Parents";
+            return item;
+        }());
+        tableElement.append(row);
+        for (var com of commits) {
+            let row = document.createElement("tr");
+            row.append(function() {
+                let item = document.createElement("td");
+                item.innerHTML = com[0];
+                return item;
+            }());
+
+            row.append(function() {
+                let entry = document.createElement("td");
+                let listItem = document.createElement("ol");
+                for (let par of com[1]) {
+                    let item = document.createElement('li');
+                    item.innerHTML = par;
+                    listItem.append(item);
+                }
+                entry.append(listItem);
+                return entry;
+            }());
+            tableElement.append(row);
+        }
+    }
+
 
     var formHandler = function() {
         var loadMaster = function(masterName) {
@@ -43,9 +90,19 @@
             u += (pageNode.value === "" || pageNode.value === "0") ? "" : "?page=" + pageNode.value;
             request({
                 url: u,
-                success: function(resp) { var newElement = document.createElement("p");
-                    newElement.innerHTML = JSON.stringify(resp);
-                    console.log(resp); contentNode.append(newElement);},
+                success: function(resp) {
+                    var commit_data = resp.values.map(function(val) {
+                        var ret_arr = [val.hash, val.parents.map(function(par) {
+                            return par.hash; })];
+                        return ret_arr;});
+
+
+                    var mergeCommits = resp.values.filter(function(val) { return val.parents.length > 1; }).map(function(val) { return val.hash; });
+
+                    populateLookupTable(resp.values);
+                    constructParentTable(commit_data);
+                    // Okay, time to build the actual tree...?
+                },
                 error: function(resp) { contentNode.append("An Error occured getting data for " + searchNode.value);}
             });
         }
