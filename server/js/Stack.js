@@ -36,3 +36,8 @@ Stack.prototype.pop = function() {
     }
 }
 
+Stack.prototype.clear = function() {
+    this._size = 0;
+    this._storage = {};
+}
+
