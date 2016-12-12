@@ -21,6 +21,7 @@ Queue.prototype.enqueue = function(data) {
 }
 
 
+
 Queue.prototype.peek = function() {
     if(this._backIndex != this._frontIndex) {
         return this._storage[this._frontIndex];
@@ -35,6 +36,11 @@ Queue.prototype.dequeue = function() {
     }
 }
 
-
 Queue.prototype.push = Queue.prototype.enqueue;
 Queue.prototype.pop = Queue.prototype.dequeue;
+
+Queue.prototype.clear = function() {
+    this._frontIndex = 1;
+    this._backIndex = 1;
+    this._storage = {};
+}
