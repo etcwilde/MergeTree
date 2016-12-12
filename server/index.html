@@ -86,17 +86,16 @@
         var depth = 0;
         var nodeQueue = new Queue();
         var retTree = new Tree();
-        var childrenCounts = {};
+        var children = {};
 
-        retTree.add(rootNode);
-        nodeQueue.push(rootNode);
+        nodeQueue.push(rootNode.key);
 
         // First-pass, finding all the children
         // Gets the smallest possible subset of the repository necessary for merge
         // tree construction
         do {
             let cur = nodeQueue.pop();
-            let parentList = lookupTable[cur.key].parents.map(function(par){
+            let parentList = lookupTable[cur].parents.map(function(par){
                 if (!(par.hash in lookupTable)){
                     console.error(par.hash, "not in lookup table, downloading");
                     request({
@@ -106,22 +105,59 @@
                     });
                 }
                 // Increase the number of children
-                childrenCounts[par.hash] = (par.hash in childrenCounts) ?  childrenCounts[par.hash] + 1 : 1;
+                (par.hash in children) ? children[par.hash].push(cur) : children[par.hash] = [cur];
                 return par.hash;
             });
 
-            // TODO: Test this part here -- probably will introduce bugs
-            let removal = ((childrenCounts[parentList[0]]) ?
-                    childrenCounts[parentList[0]] : 0)
+            let removal = ((children[parentList[0]]) ?  children[parentList[0]].length : 0);
             depth += parentList.length - removal;
-
             parentList.forEach(function(item){
-                nodeQueue.push(new TreeNode(item));
+                nodeQueue.push(item);
             });
+        } while (nodeQueue.size() > 0 && depth != 0);
+
+        // Pass two, constructing the tree
+
+        retTree.add(rootNode);
+        nodeQueue.clear();
+        nodeQueue.push(rootNode);
+        depth = 0;
+        do {
+            let cur = nodeQueue.pop();
+            let parentList = lookupTable[cur.key].parents.map(function(par){
+                if(!(par.hash in lookupTable)) {
+                    console.error(par.hash, "not found in lookup table... There was a problem downloading it");
+                }
+                return par.hash;
+            });
+
+            let old_length = parentList.length;
+            if (depth == 0) { parentList.shift(); }
+            if (old_length > 1){ depth+= parentList.length; }
+
+            parentList.forEach(function(item, index){
+                let newNode = new TreeNode(item);
+                let addNode = null,
+                setfunc = function(node) { addNode = node;};
+
+                if(children[item].length > 1) {
+                    depth--;
+                }
+
+                // Only continue working with nodes for which we are the primary
+                // parent
+                if(children[item][0] == cur.key) {
+                    cur.children.push(newNode);
+                    newNode.parent = cur;
+                    nodeQueue.push(newNode);
+                }
+            })
+            console.log(retTree);
 
         } while (nodeQueue.size() > 0 && depth != 0);
 
-        // TODO: Pass two, constructing the tree
+        return retTree;
+
     }
 
 
@@ -144,13 +180,13 @@
 
                     populateLookupTable(resp.values);
                     constructParentTable(commit_data);
-                    // trees = mergeCommits.map(function(value) {
-                    //     let t = buildMergeTree(new TreeNode(value));
-                    //     // console.log("Tree: ", t);
-                    //     return t;});
+                    trees = mergeCommits.map(function(value) {
+                        let t = buildMergeTree(new TreeNode(value));
+                        // console.log("Tree: ", t);
+                        return t;});
 
                     // Okay, time to build the actual tree...?
-                    buildMergeTree(new TreeNode(mergeCommits[0]));
+                    // buildMergeTree(new TreeNode(mergeCommits[0]));
                 },
                 error: function(resp) { contentNode.append("An Error occured getting data for " + searchNode.value);}
             });
