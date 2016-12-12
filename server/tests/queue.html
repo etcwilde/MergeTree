@@ -1,0 +1,62 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Queue Tests</title>
+    <script src="../js/Queue.js"></script>
+</head>
+<body>
+    <h1>Queue Test</h1>
+    <p>Check the javascript console in the dev tools</p>
+    <p>This tests the enqueue, dequeue, push, pop, size, peek functionalities of the
+    queue. Both should show the same results, the size should be 4, 0. Top should be
+    1. Then it should have a list from 1 to 4.</p>
+
+    <h2>Enqueue and Dequeue Test</h2>
+    <p id="eqdq_size"></p>
+    <p id="eqdq_size2"></p>
+    <p id="eqdq_elem"></p>
+    <ol id="eqdq"> </ol>
+
+
+    <h2>Push and Pop Test</h2>
+    <p id="pqpq_size"></p>
+    <p id="pqpq_size2"></p>
+    <p id="pqpq_elem"></p>
+    <ol id="pqpq"> </ol>
+
+
+    <script type="text/javascript" charset="utf-8">
+
+var enqueueDequeueNode = document.getElementById("eqdq");
+var pushPopNode = document.getElementById("pqpq");
+var queue = new Queue();
+
+queue.enqueue(1);
+queue.enqueue(2);
+queue.enqueue(3);
+queue.enqueue(4);
+document.getElementById("eqdq_size").innerHTML = "Size: " + queue.size();
+document.getElementById("eqdq_elem").innerHTML = "Top: " + queue.peek();
+while(queue.size() > 0) {
+    let domNode = document.createElement("li");
+    domNode.innerHTML = queue.dequeue();
+    enqueueDequeueNode.append(domNode);
+}
+document.getElementById("eqdq_size2").innerHTML = "Size: " + queue.size();
+
+queue.push(1);
+queue.push(2);
+queue.push(3);
+queue.push(4);
+document.getElementById("pqpq_size").innerHTML = "Size: " + queue.size();
+document.getElementById("pqpq_elem").innerHTML = "Top: " + queue.peek();
+while(queue.size() > 0) {
+    let domNode = document.createElement("li");
+    domNode.innerHTML = queue.pop();
+    pushPopNode.append(domNode);
+}
+document.getElementById("pqpq_size2").innerHTML = "Size: " + queue.size();
+    </script>
+
+</body>
+</html>
