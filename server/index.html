@@ -37,7 +37,7 @@
 
     // Database of all commits -- probably a better way to store this info
     var lookupTable = {};
-    var mergeTree = new Tree();
+    var trees = [];
 
     function populateLookupTable(commits) {
         for (var node of commits) {
@@ -51,7 +51,7 @@
         contentNode.append(tableElement);
         let row = document.createElement("tr");
         row.append(function() { let item = document.createElement("th");
-            item.innerHTML = "cid";
+            item.innerHTML = "Log";
             return item;
         }());
         row.append(function() { let item = document.createElement("th");
@@ -82,6 +82,49 @@
         }
     }
 
+    function buildMergeTree(rootNode) {
+        var depth = 0;
+        var nodeQueue = new Queue();
+        var retTree = new Tree();
+        var childrenCounts = {};
+
+        retTree.add(rootNode);
+        nodeQueue.push(rootNode);
+
+        // First-pass, finding all the children
+        // Gets the smallest possible subset of the repository necessary for merge
+        // tree construction
+        do {
+            let cur = nodeQueue.pop();
+            let parentList = lookupTable[cur.key].parents.map(function(par){
+                if (!(par.hash in lookupTable)){
+                    console.error(par.hash, "not in lookup table, downloading");
+                    request({
+                        url: par.links.self.href,
+                        success: function(resp) { lookupTable[par.hash] = resp;},
+                        error: console.error
+                    });
+                }
+                // Increase the number of children
+                childrenCounts[par.hash] = (par.hash in childrenCounts) ?  childrenCounts[par.hash] + 1 : 1;
+                return par.hash;
+            });
+
+            // TODO: Test this part here -- probably will introduce bugs
+            let removal = ((childrenCounts[parentList[0]]) ?
+                    childrenCounts[parentList[0]] : 0)
+            depth += parentList.length - removal;
+
+            parentList.forEach(function(item){
+                nodeQueue.push(new TreeNode(item));
+            });
+
+        } while (nodeQueue.size() > 0 && depth != 0);
+
+        // TODO: Pass two, constructing the tree
+    }
+
+
 
     var formHandler = function() {
         var loadMaster = function(masterName) {
@@ -101,7 +144,13 @@
 
                     populateLookupTable(resp.values);
                     constructParentTable(commit_data);
+                    // trees = mergeCommits.map(function(value) {
+                    //     let t = buildMergeTree(new TreeNode(value));
+                    //     // console.log("Tree: ", t);
+                    //     return t;});
+
                     // Okay, time to build the actual tree...?
+                    buildMergeTree(new TreeNode(mergeCommits[0]));
                 },
                 error: function(resp) { contentNode.append("An Error occured getting data for " + searchNode.value);}
             });
