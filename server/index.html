@@ -169,7 +169,6 @@
                     nodeQueue.push(newNode);
                 }
             })
-            console.log(retTree);
 
         } while (nodeQueue.size() > 0 && depth != 0);
 
@@ -198,12 +197,19 @@
                     populateLookupTable(resp.values);
                     constructParentTable(commit_data);
 
-                    // Process the array asynchronously, building each tree
-                    processArray(mergeCommits, function(value){
+                    // For now
+                    let build = function (value){
                         let tree = buildMergeTree(new TreeNode(value));
                         let rt = new ReingoldTree(tree, lookupTable);
                         rt.draw(d3.select("#content_graph"));
-                    });
+                    }(mergeCommits[0]);
+
+                    // Process the array asynchronously, building each tree
+                    // processArray(mergeCommits, function(value){
+                    //     let tree = buildMergeTree(new TreeNode(value));
+                    //     let rt = new ReingoldTree(tree, lookupTable);
+                    //     rt.draw(d3.select("#content_graph"));
+                    // });
 
                 },
                 error: function(resp) { contentNode.append("An Error occured getting data for " + searchNode.value);}
