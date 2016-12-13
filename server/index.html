@@ -4,11 +4,19 @@
     <title>Test</title>
     <!-- <script src="https://bitbucket.org/atlassian-connect/all.js"></script> -->
 
+    <link rel="stylesheet" href="css/base.css" type="text/css" media="all" />
+
     <script src="js/Network.js"></script> <!-- For loading data -->
 
     <script src="js/Queue.js"></script>
     <script src="js/Stack.js"></script>
     <script src="js/Tree.js"></script>
+
+    <script src="js/Processing.js"></script>
+
+    <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="js/vistree.js"></script>
 </head>
 <body>
     <h1>Merge Tree</h1>
@@ -19,12 +27,15 @@
         <input type="button" name="clear" id="clear_button" value="Clear" />
     </div>
 
-    <div id="content">
+    <div id="content_table" class="left">
     </div>
+
+    <div id="content_graph" class="left"> </div>
+
 
     <script type="text/javascript" charset="utf-8">
 
-    var contentNode = document.getElementById('content');
+    var contentNode = document.getElementById('content_table');
     var searchNode = document.getElementById('repoName_search');
     var pageNode = document.getElementById('repoPage_text');
     var clearNode = document.getElementById('clear_button');
@@ -33,11 +44,15 @@
         while (contentNode.firstChild) {
             contentNode.removeChild(contentNode.firstChild);
         }
+
+        while (document.getElementById('content_graph').firstChild) {
+            document.getElementById('content_graph').removeChild(document.getElementById('content_graph').firstChild);
+        }
+
     }
 
     // Database of all commits -- probably a better way to store this info
     var lookupTable = {};
-    var trees = [];
 
     function populateLookupTable(commits) {
         for (var node of commits) {
@@ -95,15 +110,17 @@
         // tree construction
         do {
             let cur = nodeQueue.pop();
+            // FIXME: Need a way to know when we've actually finished downloading
             let parentList = lookupTable[cur].parents.map(function(par){
                 if (!(par.hash in lookupTable)){
-                    console.error(par.hash, "not in lookup table, downloading");
+                    console.error(par.hash, "not in lookup table, downloading:", par.links.self.href);
                     request({
                         url: par.links.self.href,
                         success: function(resp) { lookupTable[par.hash] = resp;},
                         error: console.error
                     });
                 }
+                // FIXME: We move on too quickly
                 // Increase the number of children
                 (par.hash in children) ? children[par.hash].push(cur) : children[par.hash] = [cur];
                 return par.hash;
@@ -180,13 +197,14 @@
 
                     populateLookupTable(resp.values);
                     constructParentTable(commit_data);
-                    trees = mergeCommits.map(function(value) {
-                        let t = buildMergeTree(new TreeNode(value));
-                        // console.log("Tree: ", t);
-                        return t;});
 
-                    // Okay, time to build the actual tree...?
-                    // buildMergeTree(new TreeNode(mergeCommits[0]));
+                    // Process the array asynchronously, building each tree
+                    processArray(mergeCommits, function(value){
+                        let tree = buildMergeTree(new TreeNode(value));
+                        let rt = new ReingoldTree(tree, lookupTable);
+                        rt.draw(d3.select("#content_graph"));
+                    });
+
                 },
                 error: function(resp) { contentNode.append("An Error occured getting data for " + searchNode.value);}
             });
@@ -197,7 +215,6 @@
             success: loadMaster,
             error: function(resp) { content.innerHTML = "An error " + resp + " occured when getting the main branch name for the repository";}
         });
-
 
     }
     searchNode.addEventListener('search', formHandler);
