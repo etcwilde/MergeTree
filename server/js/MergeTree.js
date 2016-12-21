@@ -34,6 +34,8 @@ MergeTree.prototype.phase1 = async function(input) {
     let nodeQueue = new Queue();
     let children = {};
 
+    this.root = new TreeNode(input.mergeCommits[0]);
+
     // Use the first one
     nodeQueue.push(new Promise(
             function(resolve, reject) { resolve(input.mergeCommits[0]);}));
@@ -57,4 +59,44 @@ MergeTree.prototype.phase1 = async function(input) {
         parentList.forEach(function(item) { nodeQueue.push(item); });
     } while (nodeQueue.size() > 0 && depth != 0);
     return children;
+}
+
+// Phase 2: Takes the children and arranges
+MergeTree.prototype.phase2 = async function(children) {
+    this.tree.add(this.root);
+    console.log(this.tree);
+    var mtree = this;
+    let depth = 0;
+    let nodeQueue = new Queue();
+    nodeQueue.push(this.root);
+    do {
+        let cur = nodeQueue.pop();
+        let parentList = this.nodeLookup[cur.key].parents.map(function(par) { return par.hash; });
+
+        let old_length = parentList.length;
+        if (depth == 0) { parentList.shift(); }
+        if (old_length > 1) { depth += parentList.length; }
+        parentList.forEach(function(item){
+            if (!(item in mtree.nodeLookup)) {
+                // Not sure why this happens, but it does
+                // I think it is when there are smaller branches between the branch
+                // point and the merge point
+                console.error("Not available", item);
+                return;
+            }
+            let newNode = new TreeNode(item);
+            let addNode = null,
+                setfunc = function(node) { addNode = node;};
+
+            if (children[item].length > 1) {
+                depth--;
+            }
+            if (children[item][0] == cur.key) {
+                cur.children.push(newNode);
+                newNode.parent = cur;
+                nodeQueue.push(newNode);
+            }
+        })
+    } while (nodeQueue.size() > 0 && depth != 0);
+    return this.tree;
 }
