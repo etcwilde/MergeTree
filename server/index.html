@@ -13,6 +13,7 @@
     <script src="js/Tree.js"></script>
 
     <script src="js/Processing.js"></script>
+    <script src="js/MergeTree.js"></script>
 
     <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
     <script src="http://d3js.org/d3.v3.min.js"></script>
@@ -39,6 +40,7 @@
     var searchNode = document.getElementById('repoName_search');
     var pageNode = document.getElementById('repoPage_text');
     var clearNode = document.getElementById('clear_button');
+    var ourMergeTree = new MergeTree(null);
 
     var clear = function() {
         while (contentNode.firstChild) {
@@ -48,7 +50,6 @@
         while (document.getElementById('content_graph').firstChild) {
             document.getElementById('content_graph').removeChild(document.getElementById('content_graph').firstChild);
         }
-
     }
 
     // Database of all commits -- probably a better way to store this info
@@ -133,6 +134,8 @@
             });
         } while (nodeQueue.size() > 0 && depth != 0);
 
+        console.log("Phase1 Complete", children);
+
         // Pass two, constructing the tree
 
         retTree.add(rootNode);
@@ -177,13 +180,19 @@
 
     }
 
-
-
     var formHandler = function() {
         var loadMaster = function(masterName) {
             var u = 'https://api.bitbucket.org/2.0/repositories/' + searchNode.value
                 + "/commits/" + masterName.name;
             u += (pageNode.value === "" || pageNode.value === "0") ? "" : "?page=" + pageNode.value;
+
+            ourMergeTree.downloadCommits(u)
+                .then(function(r) { return ourMergeTree.populateTable(r.values);})
+                .then(function(i) { return ourMergeTree.phase1(i);})
+                .then(function(r) { console.log("children", r);});
+
+            /*
+
             request({
                 url: u,
                 success: function(resp) {
@@ -208,6 +217,7 @@
                 },
                 error: function(resp) { contentNode.append("An Error occured getting data for " + searchNode.value);}
             });
+            */
         }
 
         request({
