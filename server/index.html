@@ -2,9 +2,131 @@
 <head>
     <meta charset="utf-8">
     <title>Test</title>
-    <script src="https://bitbucket.org/atlassian-connect/all.js"></script>
+    <!-- <script src="https://bitbucket.org/atlassian-connect/all.js"></script> -->
+
+    <link rel="stylesheet" href="css/base.css" type="text/css" media="all" />
+
+    <script src="js/Network.js"></script> <!-- For loading data -->
+
+    <script src="js/Queue.js"></script>
+    <script src="js/Stack.js"></script>
+    <script src="js/Tree.js"></script>
+
+    <script src="js/Processing.js"></script>
+    <script src="js/MergeTree.js"></script>
+
+    <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="js/vistree.js"></script>
 </head>
 <body>
-    <h1>Hello World</h1>
-</body>
+    <h1>Merge Tree</h1>
+
+    <div>
+        <input type="search" name="repoName" id="repoName_search" placeholder="user/repo"/>
+        <input type="text" name="repoPage" id="repoPage_text" placeholder="page number" value="" />
+        <input type="button" name="clear" id="clear_button" value="Clear" />
+    </div>
+
+    <div id="content_table" class="left">
+    </div>
+
+    <div id="content_graph" class="left"> </div>
+
+
+    <script type="text/javascript" charset="utf-8">
+
+    var contentNode = document.getElementById('content_table');
+    var searchNode = document.getElementById('repoName_search');
+    var pageNode = document.getElementById('repoPage_text');
+    var clearNode = document.getElementById('clear_button');
+    var ourMergeTree = null;
+
+    var clear = function() {
+        ourMergeTree = new MergeTree(null);
+        while (contentNode.firstChild) {
+            contentNode.removeChild(contentNode.firstChild);
+        }
+
+        while (document.getElementById('content_graph').firstChild) {
+            document.getElementById('content_graph').removeChild(document.getElementById('content_graph').firstChild);
+        }
+    }
+
+    // Database of all commits -- probably a better way to store this info
+
+    function constructParentTable(commits) {
+        var tableElement = document.createElement("table");
+        tableElement.style.border = "thick solid #eeeeee";
+        contentNode.append(tableElement);
+        let row = document.createElement("tr");
+        row.append(function() { let item = document.createElement("th");
+            item.innerHTML = "Log";
+            return item;
+        }());
+        row.append(function() { let item = document.createElement("th");
+            item.innerHTML = "Parents";
+            return item;
+        }());
+        tableElement.append(row);
+
+        for (var commit of commits) {
+            let row = document.createElement("tr");
+            row.append(function(){
+                let item = document.createElement("td");
+                item.innerHTML = commit.hash;
+                return item;
+            }());
+            row.append(function(){
+                let entry = document.createElement("td");
+                let listItem = document.createElement("ol");
+                for (let par of commit.parents){
+                    let item = document.createElement("li");
+                    item.innerHTML = par.hash;
+                    listItem.append(item);
+                }
+                entry.append(listItem);
+                return entry;
+            }());
+            tableElement.append(row);
+        }
+    }
+
+    var formHandler = function() {
+        var loadMaster = function(masterName) {
+            var u = 'https://api.bitbucket.org/2.0/repositories/' + searchNode.value
+                + "/commits/" + masterName.name;
+            u += (pageNode.value === "" || pageNode.value === "0") ? "" : "?page=" + pageNode.value;
+
+            ourMergeTree.downloadCommits(u)
+                .then(function(r) {
+                    constructParentTable(r.values);
+                    return ourMergeTree.populateTable(r.values);})
+                .then(function(r) { return ourMergeTree.phase1(r);})
+                .then(function(r) { console.log("children", r); return ourMergeTree.phase2(r); })
+                .then(function(tree) {
+                    let rt = new ReingoldTree(tree, ourMergeTree.nodeLookup);
+                    rt.draw(d3.select("#content_graph"));
+                });
+        }
+
+        request({
+            url: 'https://api.bitbucket.org/1.0/repositories/' + searchNode.value + "/main-branch",
+            success: loadMaster,
+            error: function(resp) { content.innerHTML = "An error " + resp + " occured when getting the main branch name for the repository";}
+        });
+
+    }
+    searchNode.addEventListener('search', function() { clear(); formHandler();});
+    pageNode.addEventListener('keypress',
+            function(e){
+                if (e.keyCode === 13) {
+                    clear();
+                    formHandler();
+                }});
+    clearNode.addEventListener('click', clear);
+    </script>
+
+
+    </body>
 </html>
