@@ -21,10 +21,10 @@
 </head>
 <body>
     <h1>Merge Tree</h1>
+    <h2 id="repoTitle"></h2>
 
     <div>
         <input type="search" name="repoName" id="repoName_search" placeholder="user/repo"/>
-        <input type="text" name="repoPage" id="repoPage_text" placeholder="page number" value="" />
         <input type="button" name="clear" id="clear_button" value="Clear" />
     </div>
 
@@ -37,8 +37,7 @@
     <script type="text/javascript" charset="utf-8">
 
     var contentNode = document.getElementById('content_table');
-    var searchNode = document.getElementById('repoName_search');
-    var pageNode = document.getElementById('repoPage_text');
+    var repoNameNode = document.getElementById('repoName_search');
     var clearNode = document.getElementById('clear_button');
     var ourMergeTree = null;
 
@@ -92,41 +91,52 @@
         }
     }
 
-    var formHandler = function() {
-        var loadMaster = function(masterName) {
-            var u = 'https://api.bitbucket.org/2.0/repositories/' + searchNode.value
-                + "/commits/" + masterName.name;
-            u += (pageNode.value === "" || pageNode.value === "0") ? "" : "?page=" + pageNode.value;
+    var rt = null;
 
-            ourMergeTree.downloadCommits(u)
-                .then(function(r) {
-                    constructParentTable(r.values);
-                    return ourMergeTree.populateTable(r.values);})
-                .then(function(r) { return ourMergeTree.phase1(r);})
-                .then(function(r) { console.log("children", r); return ourMergeTree.phase2(r); })
-                .then(function(tree) {
-                    let rt = new ReingoldTree(tree, ourMergeTree.nodeLookup);
-                    rt.draw(d3.select("#content_graph"));
-                });
+    var formHandler = function() {
+        function downloadBranches(repoName) {
+            var u = 'https://api.bitbucket.org/2.0/repositories/' + repoName + "/refs/branches";
+            return download(u);
         }
 
-        request({
-            url: 'https://api.bitbucket.org/1.0/repositories/' + searchNode.value + "/main-branch",
-            success: loadMaster,
-            error: function(resp) { content.innerHTML = "An error " + resp + " occured when getting the main branch name for the repository";}
-        });
+        function downloadMasterName(repoName) {
+            var u = 'https://api.bitbucket.org/1.0/repositories/' + repoName + "/main-branch";
+            return download(u);
 
+        }
+
+        function downloadCommits(repoName, pageNum, masterBranchName) {
+            var u = 'https://api.bitbucket.org/2.0/repositories/' + repoName + '/commits/';
+            if (pageNum !== undefined) {
+                if (isNaN(pageNum)) { // Then it's the masterBranch Name
+                    u += pageNum;
+                } else {
+                    if (masterBranchName !== undefined ) {
+                        u += masterBranchName;
+                    }
+                    u += "?page=" + pageNum;
+                }
+            }
+            return download(u);
+        }
+
+        downloadMasterName(repoNameNode.value)
+            .then(function(masterName) {
+                document.getElementById("repoTitle").innerHTML = "Master Branch: " + masterName.name;
+                return downloadCommits(repoNameNode.value, masterName.name);})
+            .then(function(commits) {
+                console.log(commits);
+                constructParentTable(commits.values);
+                return ourMergeTree.populateTable(commits.values);})
+            .then(ourMergeTree.phase1)
+            .then(ourMergeTree.phase2)
+            .then(function(tree){
+                rt = new ReingoldTree(tree, ourMergeTree.nodeLookup);
+                rt.draw(d3.select("#content_graph"));});
     }
-    searchNode.addEventListener('search', function() { clear(); formHandler();});
-    pageNode.addEventListener('keypress',
-            function(e){
-                if (e.keyCode === 13) {
-                    clear();
-                    formHandler();
-                }});
+
+    repoNameNode.addEventListener('search', function() { clear(); formHandler();});
     clearNode.addEventListener('click', clear);
     </script>
-
-
     </body>
 </html>

@@ -32,3 +32,13 @@ var request = function(req) {
     }
     oReq.send(null);
 }
+
+var download = function(url) {
+    return new Promise(function(resolve, reject){
+        request({
+            url: url,
+            success: resolve,
+            error: function(e) {reject(Error(e));}
+        });
+    });
+}
