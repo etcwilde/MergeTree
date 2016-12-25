@@ -3,6 +3,7 @@ function MergeTree() {
     this.root = null;
     this.tree = new Tree();
     this.mergeCommits = [];
+    this.children = {};
 }
 
 // Asynchronous download of commits, returns promise either responding or rejecting
@@ -29,26 +30,33 @@ MergeTree.prototype.populateTable = function(commits) {
 
 // Phase 1, find the children of nodes that are important
 // TODO: We need a way to define a root node
-MergeTree.prototype.phase1 = async function(input) {
+MergeTree.prototype.phase1 = async function(mergetree) {
+    console.log("Phase 1: this", mergetree);
     let depth = 0;
     let nodeQueue = new Queue();
     let children = {};
 
-    this.root = new TreeNode(input.mergeCommits[0]);
+    mergetree.root = new TreeNode(mergetree.mergeCommits[0]);
 
     // Use the first one
     nodeQueue.push(new Promise(
-            function(resolve, reject) { resolve(input.mergeCommits[0]);}));
+            function(resolve, reject) { resolve(mergetree.mergeCommits[0]);}));
     do {
         let cur = await nodeQueue.pop();
-        let parentList = input.nodeLookup[cur].parents.map(function(par){
+        console.log(cur);
+
+        let parentList = mergetree.nodeLookup[cur].parents.map(function(par){
             return new Promise(function(resolve, reject){
-                (par.hash in children) ? children[par.hash].push(cur) : children[par.hash] = [cur];
-                if (par.hash in input.nodeLookup) {
-                    resolve(par.hash);
-                } else {
-                    input.downloadCommits(par.links.self.href)
-                        .then(function(ret){ return input.populateTable([ret]);})
+                // Add current as child of parent if not already a child
+                if (par.hash in children) {
+                    if (!children[par.hash].includes(cur)) children[par.hash].push(cur);
+                } else children[par.hash] = [cur];
+                // If we have downloaded the commit, resolve immediately,
+                // otherwise, download it
+                if (par.hash in mergetree.nodeLookup) resolve(par.hash);
+                else {
+                    mergetree.downloadCommits(par.links.self.href)
+                        .then(function(ret){ return mergetree.populateTable([ret]);})
                         .then(function() {resolve(par.hash);});
                 }
             });
@@ -58,20 +66,23 @@ MergeTree.prototype.phase1 = async function(input) {
         depth += parentList.length - removal;
         parentList.forEach(function(item) { nodeQueue.push(item); });
     } while (nodeQueue.size() > 0 && depth != 0);
-    return children;
+    mergetree.children = children;
+    return mergetree;
 }
 
 // Phase 2: Takes the children and arranges
-MergeTree.prototype.phase2 = async function(children) {
-    this.tree.add(this.root);
-    console.log(this.tree);
-    var mtree = this;
+MergeTree.prototype.phase2 = async function(mergetree) {
+    // this gets changed to something weird
+    console.log("Phase 2: this", mergetree);
+    mergetree.tree.add(mergetree.root);
+    console.log(mergetree.tree);
+    var mtree = mergetree;
     let depth = 0;
     let nodeQueue = new Queue();
-    nodeQueue.push(this.root);
+    nodeQueue.push(mergetree.root);
     do {
         let cur = nodeQueue.pop();
-        let parentList = this.nodeLookup[cur.key].parents.map(function(par) { return par.hash; });
+        let parentList = mergetree.nodeLookup[cur.key].parents.map(function(par) { return par.hash; });
 
         let old_length = parentList.length;
         if (depth == 0) { parentList.shift(); }
@@ -88,15 +99,19 @@ MergeTree.prototype.phase2 = async function(children) {
             let addNode = null,
                 setfunc = function(node) { addNode = node;};
 
-            if (children[item].length > 1) {
+            if (mergetree.children[item] === undefined ){
+                console.log("Failed Item:", item);
+                return false;
+            }
+            if (mergetree.children[item].length > 1) {
                 depth--;
             }
-            if (children[item][0] == cur.key) {
+            if (mergetree.children[item][0] == cur.key) {
                 cur.children.push(newNode);
                 newNode.parent = cur;
                 nodeQueue.push(newNode);
             }
         })
     } while (nodeQueue.size() > 0 && depth != 0);
-    return this.tree;
+    return mergetree.tree;
 }
