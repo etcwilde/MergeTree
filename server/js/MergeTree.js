@@ -87,5 +87,5 @@ MergeTree.prototype.phase2 = async function(mergetree) {
             }
         })
     } while (nodeQueue.size() > 0 && depth != 0);
-    return mergetree.tree;
+    return mergetree;
 }

@@ -1,6 +1,6 @@
 // Visualize the tree
 
-function ReingoldTree(treeData, lookupTable) {
+function ReingoldTree(treeData) {
     this.data = treeData;
 
     this.height = 480;
@@ -11,9 +11,6 @@ function ReingoldTree(treeData, lookupTable) {
         .size([this.width - this.radius * 2, this.height - this.radius * 3]);
 
     this.nodes = this.tree.nodes(treeData._root);
-
-    // Set the data with the elements as we need
-    processArray(this.nodes, function(d) { d.data = lookupTable[d.key]; });
     this.links = this.tree.links(this.nodes);
 }
 
@@ -62,10 +59,21 @@ ReingoldTree.prototype.draw = function(base) {
         .enter()
         .append("circle");
 
+    var text = svg.selectAll("text")
+        .data(this.nodes)
+        .enter()
+        .append("text");
+
+    var testLabels = text
+        .attr("x", function(d) { return d.x + rad + "px"; })
+        .attr("y", function(d) { return d.y + rad + 1.5; })
+        .text(function(d) { return d.data.message; })
+        .attr("font-family", "sans-serif")
+        .attr("font-size", "10px");
+
     var circleAttribs = circles
         .attr("r", function(d) { return rad; })
         .attr("cx", function(d) { return d.x; })
         .attr("cy", function(d) { return d.y + rad; });
-
 }
 

@@ -131,8 +131,10 @@
             .then(ourMergeTree.phase1)
             .then(ourMergeTree.phase2)
             .then(function(tree){
-                rt = new ReingoldTree(tree, ourMergeTree.nodeLookup);
-                rt.draw(d3.select("#content_graph"));});
+                tree.tree.traverseBF(function(node){ node.data = tree.nodeLookup[node.key]; });
+                rt = new ReingoldTree(tree.tree);
+                rt.draw(d3.select("#content_graph"));
+            });
     }
 
     repoNameNode.addEventListener('search', function() { clear(); formHandler();});
