@@ -49,11 +49,9 @@
 
             <div class="aui-page-panel">
                 <div class="aui-page-panel-inner">
-
                     <div class="aui-page-panel-content">
                         <h2>Repository</h2>
                         <h2 id="repo-master-branch-name"></h2>
-                        <div id="tree-spinner"></div>
                         <div id="content_graph"> </div>
                     </div>
                     <div class="aui-page-panel-sidebar">
@@ -100,7 +98,10 @@
     }
 
     function constructTree(node) {
-
+        $('#content_graph')
+            .html($("<span></span>", {"class": "aui-icon aui-icon-wait"})
+                    .text("Loading...")
+                 );
         // Create merge tree -- we should probably cache these
         let mt = new MergeTree();
         downloadCommits(repoName, masterBranchName)
