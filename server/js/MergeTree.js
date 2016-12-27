@@ -29,14 +29,14 @@ MergeTree.prototype.populateTable = function(commits) {
 }
 
 // Phase 1, find the children of nodes that are important
-// TODO: We need a way to define a root node
-MergeTree.prototype.phase1 = async function(mergetree) {
+MergeTree.prototype.phase1 = async function(mergetree, rootHash) {
     let depth = 0;
     let nodeQueue = new Queue();
     let children = {};
 
-    mergetree.root = new TreeNode(mergetree.mergeCommits[0]);
-    nodeQueue.push(new Promise(function(resolve, reject) { resolve(mergetree.mergeCommits[0]);}));
+    nodeQueue.push(new Promise(function(resolve, reject){ resolve(rootHash);}));
+    mergetree.root = new TreeNode(rootHash);
+
     do {
         let cur = await nodeQueue.pop();
         let parentList = mergetree.nodeLookup[cur].parents.map(function(par){
