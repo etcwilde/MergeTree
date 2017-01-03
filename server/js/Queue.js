@@ -36,11 +36,18 @@ Queue.prototype.dequeue = function() {
     }
 }
 
-Queue.prototype.push = Queue.prototype.enqueue;
-Queue.prototype.pop = Queue.prototype.dequeue;
+Queue.prototype.contains = function(data) {
+    for (var obj in this._storage) {
+        if (this._storage[obj] == data) return true;
+    }
+    return false;
+}
 
 Queue.prototype.clear = function() {
     this._frontIndex = 1;
     this._backIndex = 1;
     this._storage = {};
 }
+
+Queue.prototype.push = Queue.prototype.enqueue;
+Queue.prototype.pop = Queue.prototype.dequeue;
