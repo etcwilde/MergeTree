@@ -3,7 +3,7 @@
     <meta charset="utf-8">
     <title>Merge Tree</title>
     <!-- <script src="https://bitbucket.org/atlassian-connect/all.js"></script> -->
-
+    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
     <link rel="stylesheet" href="//aui-cdn.atlassian.com/aui-adg/6.0.3/css/aui.min.css" media="all">
 
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
@@ -106,8 +106,7 @@
         let mt = new MergeTree();
         downloadCommits(repoName, masterBranchName)
             .then(function(cmts) { return mt.populateTable(cmts.values); })
-            .then(function(tree) { return tree.phase1(tree,
-                        node.getAttribute('hash'));})
+            .then(function(tree) { return tree.phase1(tree, node.getAttribute('hash'));})
             .then(mt.phase2)
             .then(function(tree) {
                 tree.tree.traverseBF(function(node) {
@@ -143,6 +142,8 @@
                             }
                             return retarr;
                         })();
+
+                        $("#content_graph").html('');
 
                         masterBranchCommits.forEach(function(hash){
                             // Need to create an entry in the table
