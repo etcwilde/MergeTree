@@ -33,14 +33,24 @@ MergeTree.prototype.phase1 = async function(mergetree, rootHash) {
     let depth = 0;
     let nodeQueue = new Queue();
     let children = {};
+    let depths = {};
 
     nodeQueue.push(new Promise(function(resolve, reject){ resolve(rootHash);}));
     mergetree.root = new TreeNode(rootHash);
+    depths[rootHash] = 0;
 
     do {
         let cur = await nodeQueue.pop();
-        let parentList = mergetree.nodeLookup[cur].parents.map(function(par){
+        let parentList = mergetree.nodeLookup[cur].parents.map(function(par, idx){
             return new Promise(function(resolve, reject){
+                // If the depth hasn't yet been defined
+                if (par.hash in depths) {
+                    if (depths[cur] > depths[par.hash])  {
+                        depth--;
+                    }
+                } else {
+                    depths[par.hash] = depths[cur] + idx;
+                }
                 // Add current as child of parent if not already a child
                 if (par.hash in children) {
                     if (!children[par.hash].includes(cur)) children[par.hash].push(cur);
@@ -55,9 +65,7 @@ MergeTree.prototype.phase1 = async function(mergetree, rootHash) {
                 }
             });
         });
-        let val = await parentList[0];
-        let removal = ((children[val]) ? children[val].length : 0);
-        depth += parentList.length - removal;
+        depth += (parentList.length - 1);
         parentList.forEach(function(item) { nodeQueue.push(item); });
     } while (nodeQueue.size() > 0 && depth != 0);
     mergetree.children = children;
