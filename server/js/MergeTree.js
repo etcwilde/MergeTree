@@ -34,6 +34,8 @@ MergeTree.prototype.phase1 = async function(mergetree, rootHash) {
     let nodeQueue = new Queue();
     let children = {};
     let depths = {};
+    let promise_to_hash = new Map();
+    let visited = new Set();
 
     nodeQueue.push(new Promise(function(resolve, reject){ resolve(rootHash);}));
     mergetree.root = new TreeNode(rootHash);
@@ -42,14 +44,14 @@ MergeTree.prototype.phase1 = async function(mergetree, rootHash) {
     do {
         let cur = await nodeQueue.pop();
         let parentList = mergetree.nodeLookup[cur].parents.map(function(par, idx){
-            return new Promise(function(resolve, reject){
-                // If the depth hasn't yet been defined
-                if (par.hash in depths) {
-                    if (depths[cur] > depths[par.hash])  {
-                        depth--;
-                    }
-                } else {
+            let retPromis = new Promise(function(resolve, reject){
+                if (!(par.hash in depths)) {
+                    // TODO: Check that this is minimized, we want the min of this
+                    // and what it might be. -- Also need to check all children of
+                    // this and update depths accordingly
                     depths[par.hash] = depths[cur] + idx;
+                } else if (depths[cur] > depths[par.hash]) {
+                    depth--;
                 }
                 // Add current as child of parent if not already a child
                 if (par.hash in children) {
@@ -64,9 +66,17 @@ MergeTree.prototype.phase1 = async function(mergetree, rootHash) {
                         .then(function() {resolve(par.hash);});
                 }
             });
+            promise_to_hash.set(retPromis, par.hash);
+            return retPromis;
         });
-        depth += (parentList.length - 1);
-        parentList.forEach(function(item) { nodeQueue.push(item); });
+
+        depth += (parentList.length != 0) ? (parentList.length - 1) : 0;
+        parentList.forEach(function(item) {
+            if (!visited.has(promise_to_hash.get(item))) {
+                nodeQueue.push(item);
+                visited.add(promise_to_hash.get(item));
+            }
+        });
     } while (nodeQueue.size() > 0 && depth != 0);
     mergetree.children = children;
     return mergetree;
@@ -87,13 +97,15 @@ MergeTree.prototype.phase2 = async function(mergetree) {
         if (old_length > 1) { depth += parentList.length; }
         parentList.forEach(function(item){
             let newNode = new TreeNode(item);
-            if (mergetree.children[item].length > 1) depth--;
+            // TODO: Check that depth limiting is necessary
+            // We may be able to remove it entirely
+            // if (mergetree.children[item].length > 1) depth--;
             if (mergetree.children[item][0] == cur.key) {
                 cur.children.push(newNode);
                 newNode.parent = cur;
                 nodeQueue.push(newNode);
             }
         })
-    } while (nodeQueue.size() > 0 && depth != 0);
+    } while (nodeQueue.size() > 0);
     return mergetree;
 }
