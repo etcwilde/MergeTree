@@ -52,6 +52,9 @@ MergeTree.prototype.phase1 = async function(mergetree, rootHash) {
                     depths[par.hash] = depths[cur] + idx;
                 } else if (depths[cur] > depths[par.hash]) {
                     depth--;
+                } else if (depths[cur] < depths[par.hash]) {
+                    depths[par.hash] = depths[cur];
+                    depth--; // Will be off by at most one for each parent to make up for the old base parent
                 }
                 // Add current as child of parent if not already a child
                 if (par.hash in children) {
@@ -79,6 +82,9 @@ MergeTree.prototype.phase1 = async function(mergetree, rootHash) {
         });
     } while (nodeQueue.size() > 0 && depth != 0);
     mergetree.children = children;
+
+    // assign final depths to nodes
+    for (key in depths) mergetree.nodeLookup[key].depth = depths[key];
     return mergetree;
 }
 
@@ -97,10 +103,10 @@ MergeTree.prototype.phase2 = async function(mergetree) {
         if (old_length > 1) { depth += parentList.length; }
         parentList.forEach(function(item){
             let newNode = new TreeNode(item);
-            // TODO: Check that depth limiting is necessary
-            // We may be able to remove it entirely
-            // if (mergetree.children[item].length > 1) depth--;
-            if (mergetree.children[item][0] == cur.key) {
+            let realParent = mergetree.children[item].filter(function(child) {
+                return mergetree.nodeLookup[item].depth >= mergetree.nodeLookup[child].depth;
+                })[0]; // Parents can't be deeper than their children
+            if ( realParent == cur.key) {
                 cur.children.push(newNode);
                 newNode.parent = cur;
                 nodeQueue.push(newNode);
