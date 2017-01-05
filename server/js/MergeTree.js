@@ -103,10 +103,12 @@ MergeTree.prototype.phase2 = async function(mergetree) {
         if (old_length > 1) { depth += parentList.length; }
         parentList.forEach(function(item){
             let newNode = new TreeNode(item);
-            let realParent = mergetree.children[item].filter(function(child) {
-                return mergetree.nodeLookup[item].depth >= mergetree.nodeLookup[child].depth;
-                })[0]; // Parents can't be deeper than their children
-            if ( realParent == cur.key) {
+            let realParent = mergetree.children[item]
+                .filter(function(child) {return mergetree.nodeLookup[item].depth >= mergetree.nodeLookup[child].depth;})
+                .sort(function(a, b) {return mergetree.nodeLookup[a].depth > mergetree.nodeLookup[b].depth;})[0];
+                // Parents can't be deeper than their children, we want the one that
+                // is closest in depth to the item
+            if (realParent == cur.key) {
                 cur.children.push(newNode);
                 newNode.parent = cur;
                 nodeQueue.push(newNode);
