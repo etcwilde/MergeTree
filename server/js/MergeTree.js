@@ -90,22 +90,36 @@ MergeTree.prototype.phase1 = async function(mergetree, rootHash) {
 
 // Phase 2: Takes the children and arranges them into a tree
 MergeTree.prototype.phase2 = async function(mergetree) {
+
     mergetree.tree.add(mergetree.root);
     var mtree = mergetree;
-    let depth = 0;
     let nodeQueue = new Queue();
-    nodeQueue.push(mergetree.root);
-    do {
+
+    // First iteration
+    let cur = mergetree.root;
+    let parentList = mergetree.nodeLookup[cur.key].parents.map(function(par) { return par.hash; });
+    parentList.shift(); // Remove the next commit on the master branch
+    parentList.forEach(function(item){
+        let newNode = new TreeNode(item);
+        let realParent = mergetree.children[item]
+            .filter(function(child) {return mergetree.nodeLookup[item].depth >= mergetree.nodeLookup[child].depth;})
+            .reduce(function(a, b) { return mergetree.nodeLookup[a].depth > mergetree.nodeLookup[b].depth ? b : a; });
+        if (realParent == cur.key) {
+            cur.children.push(newNode);
+            newNode.parent = cur;
+            nodeQueue.push(newNode);
+        }
+    })
+
+    // Children of that, if there are any
+    while (nodeQueue.size() > 0) {
         let cur = nodeQueue.pop();
         let parentList = mergetree.nodeLookup[cur.key].parents.map(function(par) { return par.hash; });
-        let old_length = parentList.length;
-        if (depth == 0) { parentList.shift(); }
-        if (old_length > 1) { depth += parentList.length; }
         parentList.forEach(function(item){
             let newNode = new TreeNode(item);
             let realParent = mergetree.children[item]
                 .filter(function(child) {return mergetree.nodeLookup[item].depth >= mergetree.nodeLookup[child].depth;})
-                .sort(function(a, b) {return mergetree.nodeLookup[a].depth > mergetree.nodeLookup[b].depth;})[0];
+                .reduce(function(a, b) { return mergetree.nodeLookup[a].depth > mergetree.nodeLookup[b].depth ? b : a; });
                 // Parents can't be deeper than their children, we want the one that
                 // is closest in depth to the item
             if (realParent == cur.key) {
@@ -114,6 +128,6 @@ MergeTree.prototype.phase2 = async function(mergetree) {
                 nodeQueue.push(newNode);
             }
         })
-    } while (nodeQueue.size() > 0);
+    }
     return mergetree;
 }
