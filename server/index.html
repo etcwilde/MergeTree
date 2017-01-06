@@ -1,0 +1,177 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Merge Tree</title>
+    <!-- <script src="https://bitbucket.org/atlassian-connect/all.js"></script> -->
+    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+    <link rel="stylesheet" href="//aui-cdn.atlassian.com/aui-adg/6.0.3/css/aui.min.css" media="all">
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+    <script src="//aui-cdn.atlassian.com/aui-adg/6.0.3/js/aui.min.js"></script>
+
+    <script src="js/Network.js"></script> <!-- For loading data -->
+
+    <script src="js/Queue.js"></script>
+    <script src="js/Stack.js"></script>
+    <script src="js/Tree.js"></script>
+
+    <script src="js/Processing.js"></script>
+    <script src="js/MergeTree.js"></script>
+
+    <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="js/vistree.js"></script>
+
+    <style type="text/css" media="screen">
+    </style>
+</head>
+<body class"aui-page-focused aui-page-size-large">
+    <div id="page">
+        <section id="content" role="main">
+            <header class="aui-page-header">
+
+                <header class="aui-page-header">
+                    <div class="aui-page-header-inner">
+                        <div class="aui-page-header-main">
+                            <h1>Merge Tree</h1>
+                        </div>
+                    </div>
+                </header>
+
+                <div class="aui-page-header-inner">
+                    <div class="aui-page-header-main">
+                            <form action="javascript:search()" accept-charset="utf-8" class="aui">
+                                <input type="search" name"repoName" id="repoName_search" class="text medium-field" placeholder="user/repo" />
+                            </form>
+                    </div>
+                </div>
+            </header>
+
+            <div class="aui-page-panel">
+                <div class="aui-page-panel-inner">
+                    <div class="aui-page-panel-content">
+                        <h2>Repository</h2>
+                        <h2 id="repo-master-branch-name"></h2>
+                        <div id="content_graph"> </div>
+                    </div>
+                    <div class="aui-page-panel-sidebar">
+                        <h2>Master Branch Commits</h2>
+                        <table class="aui repository-list" id="master_commits">
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer id="footer" role="contentinfo">
+            <section class="footer-body">
+                <ul>
+                    <li><a href="https://web.uvic.ca/~etcwilde" target="_blank">Evan Wilde</a></li>
+                    <li><a href="https://www.uvic.ca/" target="_blank">University of Victoria</a></li>
+                    <li>2016</li>
+                    <li><a href="http://ieeexplore.ieee.org/document/7780151/" target="_blank">Merge-Tree</a></li>
+                </ul>
+            </section>
+        </footer>
+    </div>
+
+
+    <script type="text/javascript" charset="utf-8">
+
+
+    var repoNameNode = document.getElementById("repoName_search"),
+        repoName,
+        masterBranchName,
+        setMasterBranchName = function(name) { masterBranchName = name; };
+
+    function downloadMasterName(repoName) {
+        var u = 'https://api.bitbucket.org/1.0/repositories/' + repoName + "/main-branch";
+        return download(u);
+    }
+
+    function downloadCommits(repoName, masterBranchName, pagenum=0) {
+        var u = 'https://api.bitbucket.org/2.0/repositories/'
+            + repoName
+            + '/commits/'
+            + masterBranchName;
+        return download(u);
+    }
+
+    function constructTree(node) {
+        $('#content_graph')
+            .html($("<span></span>", {"class": "aui-icon aui-icon-wait"})
+                    .text("Loading...")
+                 );
+        // Create merge tree -- we should probably cache these
+        let mt = new MergeTree();
+        downloadCommits(repoName, masterBranchName)
+            .then(function(cmts) { return mt.populateTable(cmts.values); })
+            .then(function(tree) { return tree.phase1(tree, node.getAttribute('hash'));})
+            .then(mt.phase2)
+            .then(function(tree) {
+                tree.tree.traverseBF(function(node) {
+                    node.data = tree.nodeLookup[node.key]; });
+                let rt = new ReingoldTree(tree.tree);
+                $("#content_graph").html('');
+                rt.draw(d3.select("#content_graph"));
+            });
+    }
+
+    function search() {
+        $("#master_commits").html("");
+        repoName = repoNameNode.value;
+        downloadMasterName(repoName)
+            .then(function(masterName){
+                setMasterBranchName(masterName.name);
+                downloadCommits(repoName, masterName.name)
+                    .then(function(commits){
+                        // Start with the first one and work our way back
+                        let commitMap = {};
+                        commits.values.forEach(function(v){
+                            commitMap[v.hash] = v;
+                        });
+
+                        let masterBranchCommits = (function(){
+                            let next = commits.values[0].hash;
+                            let retarr = [];
+                            // while we have somewhere to go
+                            while (commitMap[next] !== undefined) {
+                                retarr.push(next);
+                                if (commitMap[next].parents[0] === undefined){ break; }
+                                next = commitMap[next].parents[0].hash;
+                            }
+                            return retarr;
+                        })();
+
+                        $("#content_graph").html('');
+
+                        masterBranchCommits.forEach(function(hash){
+                            // Need to create an entry in the table
+
+                            var tableRow = $("<tr></tr>",
+                                    {"class": "repository--list--row"})
+                                .append($("<td></td>",
+                                            {"class": "repository-list--summary"})
+                                        .append($("<p></p>",
+                                                {"class": "repository-list--name"})
+                                            .append($("<a></a>", {
+                                                "onclick":
+                                                "constructTree(this);",
+                                                "hash": hash
+                                            })
+                                            .text(commitMap[hash].message))
+                                            )
+                                        .append($("<p></p>",
+                                                {"class": "repository-list--byline"})
+                                            .text(commitMap[hash].author.raw)
+                                               ));
+                            $("#master_commits").append(tableRow);
+                        });
+                    });
+            });
+    }
+
+
+    </script>
+    </body>
+</html>
